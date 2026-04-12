@@ -11,7 +11,9 @@ class LeituraPage extends StatefulWidget {
 
 class _LeituraPageState extends State<LeituraPage> {
   final TextEditingController controller = TextEditingController();
+  final TextEditingController quantidadeController = TextEditingController();
   final FocusNode focusNode = FocusNode();
+  final FocusNode focusNodeQuantidade = FocusNode();
   int total = 0;
   
   @override
@@ -25,10 +27,33 @@ class _LeituraPageState extends State<LeituraPage> {
     carregarLeituras();
   }
 
+  @override
+  void dispose() {
+    controller.dispose();
+    quantidadeController.dispose();
+    focusNode.dispose();
+    focusNodeQuantidade.dispose();
+    super.dispose();
+  }
+
   Future<void> enviarCodigo() async {
     final codigoLido = controller.text.trim();
 
     if (codigoLido.isEmpty) return;
+
+    // Se quantidade está habilitada mas não foi preenchida, foca no campo de quantidade
+    if (AppState.permitirQuantidade && quantidadeController.text.trim().isEmpty) {
+      focusNodeQuantidade.requestFocus();
+      return;
+    }
+
+    // Obter quantidade
+    int qtd = 1;
+    if (AppState.permitirQuantidade) {
+      final quantidadeTexto = quantidadeController.text.trim();
+      qtd = int.tryParse(quantidadeTexto) ?? 1;
+      if (qtd < 1) qtd = 1;
+    }
 
     if (!AppState.permitirCodigosNaoCadastrados) {
       final desc = await DbService.getDescricaoProduto(codigoLido);
@@ -53,15 +78,19 @@ class _LeituraPageState extends State<LeituraPage> {
       }
     }
 
-    await DbService.salvarLeitura(
-                      codigo: codigoLido,
-                      loja: AppState.loja,
-                      secao: AppState.secao,
-                      coletor: AppState.nome,
-                      lido: AppState.permitirCodigosNaoCadastrados ? 1 : 0,
-                      );
+    // Inserir múltiplos registros conforme a quantidade
+    for (int i = 0; i < qtd; i++) {
+      await DbService.salvarLeitura(
+        codigo: codigoLido,
+        loja: AppState.loja,
+        secao: AppState.secao,
+        coletor: AppState.nome,
+        lido: AppState.permitirCodigosNaoCadastrados ? 1 : 0,
+      );
+    }
 
     controller.clear();
+    quantidadeController.clear();
 
     await carregarLeituras();
 
@@ -79,25 +108,55 @@ class _LeituraPageState extends State<LeituraPage> {
       children: [
         Padding(
           padding: const EdgeInsets.all(16),
-          child: Row(
+          child: Column(
             children: [
-              Expanded(
-                child: TextField(
-                  controller: controller,
-                  focusNode: focusNode,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    labelText: 'Digite ou escaneie o código',
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: controller,
+                      focusNode: focusNode,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Digite ou escaneie o código',
+                      ),
+                      onSubmitted: (_) => enviarCodigo(),
+                    ),
                   ),
-                  onSubmitted: (_) => enviarCodigo(),
+                  if (!AppState.permitirQuantidade) ...[
+                    const SizedBox(width: 10),
+                    ElevatedButton(
+                      onPressed: enviarCodigo,
+                      child: const Text("OK"),
+                    ),
+                  ],
+                ],
+              ),
+              if (AppState.permitirQuantidade) ...[
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: quantidadeController,
+                        focusNode: focusNodeQuantidade,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          labelText: 'Quantidade',
+                        ),
+                        onSubmitted: (_) => enviarCodigo(),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    ElevatedButton(
+                      onPressed: enviarCodigo,
+                      child: const Text("OK"),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 10),
-              ElevatedButton(
-                onPressed: enviarCodigo,
-                child: const Text("OK"),
-              ),
+              ],
             ],
           ),
         ),

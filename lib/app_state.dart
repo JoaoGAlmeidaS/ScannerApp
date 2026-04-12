@@ -6,6 +6,7 @@ class AppState {
   static String loja = '';
   static String secao = '';
   static bool permitirCodigosNaoCadastrados = false;
+  static bool permitirQuantidade = false;
 
   static Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
@@ -13,6 +14,7 @@ class AppState {
     loja = prefs.getString('loja') ?? '';
     secao = prefs.getString('secao') ?? '';
     permitirCodigosNaoCadastrados = prefs.getBool('permitirCodigosNaoCadastrados') ?? false;
+    permitirQuantidade = prefs.getBool('permitirQuantidade') ?? false;
   }
 
   static Future<void> save() async {
@@ -21,6 +23,7 @@ class AppState {
     await prefs.setString('loja', loja);
     await prefs.setString('secao', secao);
     await prefs.setBool('permitirCodigosNaoCadastrados', permitirCodigosNaoCadastrados);
+    await prefs.setBool('permitirQuantidade', permitirQuantidade);
   }
 
   final agora = DateTime.now().toIso8601String();

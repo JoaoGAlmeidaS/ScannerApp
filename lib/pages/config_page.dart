@@ -225,13 +225,13 @@ class _ConfigPageState extends State<ConfigPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text(
-              'Defina seu usuário e loja para continuar.',
+              'Defina o coletor e loja para continuar.',
               style: TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 20),
             ListTile(
               leading: const Icon(Icons.person),
-              title: const Text('Nome do usuário'),
+              title: const Text('Numero do Coletor'),
               subtitle: Text(AppState.nome.isNotEmpty
                   ? AppState.nome
                   : 'Ainda não definido'),
@@ -277,6 +277,17 @@ class _ConfigPageState extends State<ConfigPage> {
               value: AppState.permitirCodigosNaoCadastrados,
               onChanged: (value) async {
                 AppState.permitirCodigosNaoCadastrados = value;
+                await AppState.save();
+                _atualizarEstado();
+              },
+            ),
+            const SizedBox(height: 10),
+            SwitchListTile(
+              title: const Text('Habilitar campo de quantidade'),
+              subtitle: const Text('Permite informar a quantidade ao ler códigos'),
+              value: AppState.permitirQuantidade,
+              onChanged: (value) async {
+                AppState.permitirQuantidade = value;
                 await AppState.save();
                 _atualizarEstado();
               },

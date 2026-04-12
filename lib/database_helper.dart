@@ -22,6 +22,6 @@ class DatabaseHelper {
     }
     _database = await openDatabase(path);
     return _database!;
-  }
   
+  }
 }
