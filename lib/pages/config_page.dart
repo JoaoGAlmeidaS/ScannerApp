@@ -17,11 +17,13 @@ class ConfigPage extends StatefulWidget {
 class _ConfigPageState extends State<ConfigPage> {
   bool _unlocking = false;
   String? _senhaAtual;
+  String? _areaAtual;
 
   @override
   void initState() {
     super.initState();
     _loadSenha();
+    _loadArea();
     if (widget.requirePassword) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _verificarSenha();
@@ -33,6 +35,13 @@ class _ConfigPageState extends State<ConfigPage> {
     final senha = await DbService.getConfigSenha();
     setState(() {
       _senhaAtual = senha;
+    });
+  }
+
+  Future<void> _loadArea() async {
+    final area = await DbService.getConfigArea();
+    setState(() {
+      _areaAtual = area;
     });
   }
   void _atualizarEstado() {
@@ -197,6 +206,165 @@ class _ConfigPageState extends State<ConfigPage> {
     }
   }
 
+  Future<void> _alterarArea() async {
+    final controller = TextEditingController(text: _areaAtual ?? '');
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Configurar Área'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: controller,
+                decoration: const InputDecoration(
+                  labelText: 'Área',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Salvar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (ok == true) {
+      if (controller.text.isEmpty) {
+        await _showMensagem('Preencha o campo de área.');
+        return;
+      }
+
+      await DbService.salvarConfigArea(controller.text);
+      await _loadArea();
+      await _showMensagem('Área salva com sucesso.');
+    }
+  }
+
+  Future<void> _importarBanco() async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Importar banco de dados'),
+          content: const Text(
+            'ATENÇÃO: Esta ação irá substituir completamente o banco de dados atual. '
+            'Todos os dados atuais serão perdidos. Um backup será criado automaticamente.\n\n'
+            'Deseja continuar?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Importar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmar != true) return;
+
+    try {
+      final sucesso = await DbService.importarBanco();
+
+      if (sucesso) {
+        await _showMensagem(
+          'Banco de dados importado com sucesso!\n\n'
+          'O aplicativo será reiniciado para aplicar as mudanças.',
+        );
+
+        // Reiniciar o app
+        if (mounted) {
+          Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+        }
+      }
+    } catch (e) {
+      await _showMensagem('Erro ao importar banco: ${e.toString()}');
+    }
+  }
+
+  Future<void> _verificarBanco() async {
+    try {
+      final estado = await DbService.verificarEstadoBanco();
+      
+      if (!mounted) return;
+      
+      String mensagem = '';
+      
+      if (estado['success'] == true) {
+        mensagem += '✅ Banco conectado com sucesso\n\n';
+        mensagem += '📋 Tabelas encontradas: ${estado['tables'].join(', ')}\n\n';
+        
+        if (estado['pcdesc']['exists'] == true) {
+          mensagem += '📊 Tabela PCDESC:\n';
+          mensagem += '   - Colunas: ${estado['pcdesc']['columns']}\n';
+          mensagem += '   - Registros: ${estado['pcdesc']['records']}\n';
+          mensagem += '   - Campos: ${estado['pcdesc']['columnNames'].join(', ')}\n\n';
+        } else {
+          mensagem += '❌ Tabela PCDESC não encontrada\n\n';
+        }
+        
+        if (estado['pcprod']['exists'] == true) {
+          mensagem += '📦 Tabela PCPROD:\n';
+          mensagem += '   - Colunas: ${estado['pcprod']['columns']}\n';
+          mensagem += '   - Registros: ${estado['pcprod']['records']}\n';
+          mensagem += '   - Campos: ${estado['pcprod']['columnNames'].join(', ')}\n';
+        } else {
+          mensagem += '❌ Tabela PCPROD não encontrada\n';
+        }
+      } else {
+        mensagem = '❌ Erro ao verificar banco: ${estado['error']}';
+      }
+      
+      await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Estado do Banco de Dados'),
+          content: SingleChildScrollView(
+            child: Text(mensagem),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Erro'),
+          content: Text('Erro ao verificar banco: ${e.toString()}'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
   Future<void> _showMensagem(String mensagem) async {
     if (!mounted) return;
     await showDialog(
@@ -262,6 +430,16 @@ class _ConfigPageState extends State<ConfigPage> {
             ),
             const SizedBox(height: 10),
             ListTile(
+              leading: const Icon(Icons.layers),
+              title: const Text('Área'),
+              subtitle: Text(_areaAtual != null && _areaAtual!.isNotEmpty
+                  ? _areaAtual!
+                  : 'Ainda não definida'),
+              trailing: const Icon(Icons.arrow_forward_ios),
+              onTap: _alterarArea,
+            ),
+            const SizedBox(height: 10),
+            ListTile(
               leading: const Icon(Icons.lock),
               title: const Text('Senha de configuração'),
               subtitle: Text(_senhaAtual != null
@@ -291,6 +469,22 @@ class _ConfigPageState extends State<ConfigPage> {
                 await AppState.save();
                 _atualizarEstado();
               },
+            ),
+            const SizedBox(height: 10),
+            ListTile(
+              leading: const Icon(Icons.upload_file),
+              title: const Text('Importar banco de dados'),
+              subtitle: const Text('Substituir banco atual por arquivo .db3'),
+              trailing: const Icon(Icons.arrow_forward_ios),
+              onTap: _importarBanco,
+            ),
+            const SizedBox(height: 10),
+            ListTile(
+              leading: const Icon(Icons.info),
+              title: const Text('Verificar banco de dados'),
+              subtitle: const Text('Verificar estado e estrutura do banco atual'),
+              trailing: const Icon(Icons.arrow_forward_ios),
+              onTap: _verificarBanco,
             ),
             const SizedBox(height: 30),
             ElevatedButton(

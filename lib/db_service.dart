@@ -5,6 +5,7 @@ import 'package:sqflite/sqflite.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:file_picker/file_picker.dart';
 
 class DbService {
   static Future<void> salvarLeitura({
@@ -14,26 +15,49 @@ class DbService {
     required String coletor,
     int lido = 1,
   }) async {
-    final db = await DatabaseHelper.getDatabase();
+    try {
+      final db = await DatabaseHelper.getDatabase();
 
-    final uuid = Uuid().v4();
-    final agora = DateTime.now().toIso8601String();
-    final lojaNormalizada = loja.trim();
-    final secaoNormalizada = secao.trim();
-    final coletorNormalizado = coletor.trim();
+      final uuid = Uuid().v4();
+      final agora = DateTime.now().toIso8601String();
+      final lojaNormalizada = loja.trim();
+      final secaoNormalizada = secao.trim();
+      final coletorNormalizado = coletor.trim();
 
-    await db.insert('pcdesc', {
-      'codigo': codigo,
-      'codigoInterno': null,
-      'cor': null,
-      'loja': lojaNormalizada,
-      'area': null,
-      'secao': secaoNormalizada,
-      'coletor': coletorNormalizado,
-      'datahora': agora,
-      'lido': lido,
-      'chave': uuid,
-    });
+      // Get columns to determine schema
+      final columns = await getPcdescColumns();
+      final hasDatahora = columns.contains('datahora');
+      final hasDia = columns.contains('dia');
+      final hasHora = columns.contains('hora');
+
+      // Build insert statement dynamically
+      final insertColumns = ['codigo', 'loja', 'secao', 'coletor', 'lido', 'chave'];
+      final values = [codigo, lojaNormalizada, secaoNormalizada, coletorNormalizado, lido, uuid];
+
+      if (hasDatahora) {
+        insertColumns.add('datahora');
+        values.add(agora);
+      } else if (hasDia && hasHora) {
+        insertColumns.add('dia');
+        insertColumns.add('hora');
+        final parts = agora.split('T'); // ISO format: 2023-04-12T14:30:00.000
+        values.add(parts[0]); // dia
+        values.add(parts[1].split('.')[0]); // hora without milliseconds
+      } else {
+        throw Exception('Tabela pcdesc não possui colunas de data/hora compatíveis');
+      }
+
+      final placeholders = List.filled(values.length, '?').join(', ');
+      final sql = 'INSERT INTO pcdesc (${insertColumns.join(', ')}) VALUES ($placeholders)';
+
+      final result = await db.rawInsert(sql, values);
+
+      if (result == 0) {
+        throw Exception('Falha ao inserir registro no banco de dados');
+      }
+    } catch (e) {
+      throw Exception('Erro ao salvar leitura: ${e.toString()}');
+    }
   }
 
   static Future<List<Map<String, dynamic>>> getItensPorLoja({
@@ -69,6 +93,19 @@ class DbService {
 
   static Future<List<Map<String, dynamic>>> getItensPorSecao() async {
     final db = await DatabaseHelper.getDatabase();
+    final columns = await getPcdescColumns();
+    final hasDatahora = columns.contains('datahora');
+
+    String selectDatahora;
+    String orderByDatahora;
+
+    if (hasDatahora) {
+      selectDatahora = 'd.datahora';
+      orderByDatahora = 'd.datahora DESC';
+    } else {
+      selectDatahora = 'd.dia || \' \' || d.hora';
+      orderByDatahora = 'd.dia DESC, d.hora DESC';
+    }
 
     return await db.rawQuery(
       '''
@@ -76,13 +113,13 @@ class DbService {
         d.chave,
         d.codigo,
         p.descr,
-        d.datahora
+        $selectDatahora as datahora
       FROM pcdesc d
       LEFT JOIN pcprod p ON p.codigo = d.codigo
       WHERE trim(d.loja) = trim(?)
         AND trim(d.secao) = trim(?)
         AND trim(d.coletor) = trim(?)
-      ORDER BY d.datahora DESC
+      ORDER BY $orderByDatahora
     ''',
       [AppState.loja, AppState.secao, AppState.nome],
     );
@@ -155,6 +192,102 @@ class DbService {
     );
   }
 
+  static Future<bool> importarBanco() async {
+    try {
+      // Selecionar arquivo
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.any,
+        dialogTitle: 'Selecionar arquivo de banco de dados (.db3)',
+        allowMultiple: false,
+      );
+
+      if (result == null || result.files.isEmpty || result.files.single.path == null) {
+        return false; // Usuário cancelou
+      }
+
+      final arquivoSelecionado = File(result.files.single.path!);
+
+      // Verificar extensão do arquivo
+      if (!arquivoSelecionado.path.toLowerCase().endsWith('.db3')) {
+        throw Exception('Por favor, selecione um arquivo com extensão .db3');
+      }
+
+      // Verificar se o arquivo existe
+      if (!await arquivoSelecionado.exists()) {
+        throw Exception('Arquivo selecionado não existe');
+      }
+
+      // Verificar tamanho do arquivo (banco vazio tem ~100KB)
+      final fileSize = await arquivoSelecionado.length();
+      if (fileSize < 1000) { // Menos de 1KB provavelmente não é um banco válido
+        throw Exception('Arquivo muito pequeno. Selecione um banco de dados válido.');
+      }
+
+      // Verificar se é um banco SQLite válido tentando abri-lo
+      Database? testDb;
+      try {
+        testDb = await openDatabase(arquivoSelecionado.path, readOnly: true);
+        
+        // Verificar se as tabelas necessárias existem
+        final tables = await testDb.rawQuery("SELECT name FROM sqlite_master WHERE type='table'");
+        final tableNames = tables.map((t) => t['name'] as String).toList();
+        
+        if (!tableNames.contains('pcdesc')) {
+          throw Exception('O banco selecionado não contém a tabela pcdesc necessária');
+        }
+        if (!tableNames.contains('pcprod')) {
+          throw Exception('O banco selecionado não contém a tabela pcprod necessária');
+        }
+        
+        await testDb.close();
+      } catch (e) {
+        if (testDb != null) {
+          await testDb.close();
+        }
+        throw Exception('Erro ao validar banco: ${e.toString()}');
+      }
+
+      // Fechar conexão atual
+      final db = await DatabaseHelper.getDatabase();
+      await db.close();
+
+      // Caminho do banco atual
+      final dbPath = db.path;
+
+      // Fazer backup do banco atual
+      final backupPath = '$dbPath.backup';
+      final dbFile = File(dbPath);
+      if (await dbFile.exists()) {
+        await dbFile.copy(backupPath);
+      }
+
+      // Copiar o novo banco
+      await arquivoSelecionado.copy(dbPath);
+
+      // Reinicializar a conexão
+      await DatabaseHelper.resetConnection();
+
+      return true;
+    } catch (e) {
+      // Em caso de erro, tentar restaurar backup
+      try {
+        final db = await DatabaseHelper.getDatabase();
+        final dbPath = db.path;
+        final backupPath = '$dbPath.backup';
+
+        final backupFile = File(backupPath);
+        if (await backupFile.exists()) {
+          await backupFile.copy(dbPath);
+          await DatabaseHelper.resetConnection();
+        }
+      } catch (_) {
+        // Ignorar erro de restauração
+      }
+
+      rethrow;
+    }
+  }
+
   static Future<void> ensureSenhaTable() async {
     final db = await DatabaseHelper.getDatabase();
     await db.execute('''
@@ -199,11 +332,117 @@ class DbService {
     return await getConfigSenha() != null;
   }
 
+  static Future<void> ensureAreaTable() async {
+    final db = await DatabaseHelper.getDatabase();
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS config_area (
+        id INTEGER PRIMARY KEY,
+        area TEXT NOT NULL
+      )
+    ''');
+  }
+
+  static Future<String?> getConfigArea() async {
+    await ensureAreaTable();
+    final db = await DatabaseHelper.getDatabase();
+
+    final result = await db.query(
+      'config_area',
+      columns: ['area'],
+      where: 'id = ?',
+      whereArgs: [1],
+      limit: 1,
+    );
+
+    if (result.isNotEmpty) {
+      return result.first['area'] as String?;
+    }
+
+    return null;
+  }
+
+  static Future<void> salvarConfigArea(String area) async {
+    await ensureAreaTable();
+    final db = await DatabaseHelper.getDatabase();
+
+    await db.insert(
+      'config_area',
+      {'id': 1, 'area': area},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  static Future<bool> hasConfigArea() async {
+    return await getConfigArea() != null;
+  }
+
+  static Future<Map<String, dynamic>> verificarEstadoBanco() async {
+    try {
+      final db = await DatabaseHelper.getDatabase();
+      
+      // Verificar tabelas existentes
+      final tables = await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table'");
+      final tableNames = tables.map((t) => t['name'] as String).toList();
+      
+      // Verificar estrutura da tabela pcdesc
+      Map<String, dynamic> pcdescInfo = {};
+      if (tableNames.contains('pcdesc')) {
+        final columns = await db.rawQuery("PRAGMA table_info(pcdesc)");
+        pcdescInfo = {
+          'exists': true,
+          'columns': columns.length,
+          'columnNames': columns.map((c) => c['name']).toList(),
+        };
+        
+        // Contar registros
+        final count = await db.rawQuery("SELECT COUNT(*) as total FROM pcdesc");
+        pcdescInfo['records'] = count.first['total'];
+      } else {
+        pcdescInfo = {'exists': false};
+      }
+      
+      // Verificar estrutura da tabela pcprod
+      Map<String, dynamic> pcprodInfo = {};
+      if (tableNames.contains('pcprod')) {
+        final columns = await db.rawQuery("PRAGMA table_info(pcprod)");
+        pcprodInfo = {
+          'exists': true,
+          'columns': columns.length,
+          'columnNames': columns.map((c) => c['name']).toList(),
+        };
+        
+        // Contar registros
+        final count = await db.rawQuery("SELECT COUNT(*) as total FROM pcprod");
+        pcprodInfo['records'] = count.first['total'];
+      } else {
+        pcprodInfo = {'exists': false};
+      }
+      
+      return {
+        'success': true,
+        'tables': tableNames,
+        'pcdesc': pcdescInfo,
+        'pcprod': pcprodInfo,
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'error': e.toString(),
+      };
+    }
+  }
+
   static Future<List<Map<String, dynamic>>> getLojas() async {
     final db = await DatabaseHelper.getDatabase();
 
     final result = await db.query('Lojas');
 
     return result;
+  }
+
+  static Future<List<String>> getPcdescColumns() async {
+    final db = await DatabaseHelper.getDatabase();
+    final result = await db.rawQuery("PRAGMA table_info(pcdesc)");
+    return result.map((row) => row['name'] as String).toList();
   }
 }

@@ -78,23 +78,40 @@ class _LeituraPageState extends State<LeituraPage> {
       }
     }
 
-    // Inserir múltiplos registros conforme a quantidade
-    for (int i = 0; i < qtd; i++) {
-      await DbService.salvarLeitura(
-        codigo: codigoLido,
-        loja: AppState.loja,
-        secao: AppState.secao,
-        coletor: AppState.nome,
-        lido: AppState.permitirCodigosNaoCadastrados ? 1 : 0,
+    try {
+      // Inserir múltiplos registros conforme a quantidade
+      for (int i = 0; i < qtd; i++) {
+        await DbService.salvarLeitura(
+          codigo: codigoLido,
+          loja: AppState.loja,
+          secao: AppState.secao,
+          coletor: AppState.nome,
+          lido: AppState.permitirCodigosNaoCadastrados ? 1 : 0,
+        );
+      }
+
+      controller.clear();
+      quantidadeController.clear();
+
+      await carregarLeituras();
+
+      focusNode.requestFocus();
+    } catch (e) {
+      if (!mounted) return;
+      await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Erro ao salvar'),
+          content: Text('Não foi possível salvar a leitura: ${e.toString()}'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
       );
     }
-
-    controller.clear();
-    quantidadeController.clear();
-
-    await carregarLeituras();
-
-    focusNode.requestFocus();
   }
 
   @override

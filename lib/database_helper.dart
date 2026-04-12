@@ -22,6 +22,12 @@ class DatabaseHelper {
     }
     _database = await openDatabase(path);
     return _database!;
-  
+  }
+
+  static Future<void> resetConnection() async {
+    if (_database != null) {
+      await _database!.close();
+      _database = null;
+    }
   }
 }
