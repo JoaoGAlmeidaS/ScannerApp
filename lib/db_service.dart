@@ -14,6 +14,7 @@ class DbService {
     required String secao,
     required String coletor,
     int lido = 1,
+    int quantidade = 1,
   }) async {
     try {
       final db = await DatabaseHelper.getDatabase();
@@ -29,6 +30,7 @@ class DbService {
       final hasDatahora = columns.contains('datahora');
       final hasDia = columns.contains('dia');
       final hasHora = columns.contains('hora');
+      final hasQtde = columns.contains('qtde');
 
       // Build insert statement dynamically
       final insertColumns = ['codigo', 'loja', 'secao', 'coletor', 'lido', 'chave'];
@@ -41,10 +43,28 @@ class DbService {
         insertColumns.add('dia');
         insertColumns.add('hora');
         final parts = agora.split('T'); // ISO format: 2023-04-12T14:30:00.000
-        values.add(parts[0]); // dia
-        values.add(parts[1].split('.')[0]); // hora without milliseconds
+        
+        // Convertendo para o formato desejado
+        final dateParts = parts[0].split('-'); // [YYYY, MM, DD]
+        final timeParts = parts[1].split(':'); // [HH, mm, ss.mmm]
+        
+        // Dia em formato DDMMYY (ex: 070101)
+        final dia = '${dateParts[2]}${dateParts[1]}${dateParts[0].substring(2)}';
+        
+        // Hora em formato HHMMSS (ex: 205303)
+        final hora = '${timeParts[0]}${timeParts[1]}${timeParts[2].split('.')[0]}';
+        
+        values.add(dia);
+        values.add(hora);
       } else {
         throw Exception('Tabela pcdesc não possui colunas de data/hora compatíveis');
+      }
+
+      if (hasQtde) {
+        insertColumns.add('qtde');
+        values.add(quantidade);
+      } else {
+        throw Exception('Tabela pcdesc não possui a coluna qtde');
       }
 
       final placeholders = List.filled(values.length, '?').join(', ');
@@ -79,7 +99,8 @@ class DbService {
       SELECT 
         d.codigo,
         d.secao,
-        COUNT(*) as quantidade,
+        SUM(d.qtde) as quantidade,
+        MIN(d.chave) as chave,
         p.descr
       FROM pcdesc d
       LEFT JOIN pcprod p ON p.codigo = d.codigo
@@ -112,6 +133,7 @@ class DbService {
       SELECT 
         d.chave,
         d.codigo,
+        d.qtde,
         p.descr,
         $selectDatahora as datahora
       FROM pcdesc d
@@ -129,7 +151,7 @@ class DbService {
     final db = await DatabaseHelper.getDatabase();
 
     final result = await db.rawQuery(
-      'SELECT COUNT(*) as total FROM pcdesc WHERE trim(loja) = trim(?) AND trim(secao) = trim(?) AND trim(coletor) = trim(?)',
+      'SELECT SUM(qtde) as total FROM pcdesc WHERE trim(loja) = trim(?) AND trim(secao) = trim(?) AND trim(coletor) = trim(?)',
       [AppState.loja, AppState.secao, AppState.nome],
     );
 
@@ -149,8 +171,48 @@ class DbService {
 
     if (result.isNotEmpty) {
       final chave = result.first['chave'];
+      final qtdeAtual = result.first['qtde'] as int? ?? 1;
 
-      await db.delete('pcdesc', where: 'chave = ?', whereArgs: [chave]);
+      if (qtdeAtual > 1) {
+        // Reduzir quantidade em 1
+        await db.update(
+          'pcdesc',
+          {'qtde': qtdeAtual - 1},
+          where: 'chave = ?',
+          whereArgs: [chave],
+        );
+      } else {
+        // Se quantidade é 1 ou menos, remover o registro
+        await db.delete('pcdesc', where: 'chave = ?', whereArgs: [chave]);
+      }
+    }
+  }
+
+  static Future<void> removerItemPorChave(String chave) async {
+    final db = await DatabaseHelper.getDatabase();
+
+    final result = await db.query(
+      'pcdesc',
+      where: 'chave = ?',
+      whereArgs: [chave],
+      limit: 1,
+    );
+
+    if (result.isNotEmpty) {
+      final qtdeAtual = result.first['qtde'] as int? ?? 1;
+
+      if (qtdeAtual > 1) {
+        // Reduzir quantidade em 1
+        await db.update(
+          'pcdesc',
+          {'qtde': qtdeAtual - 1},
+          where: 'chave = ?',
+          whereArgs: [chave],
+        );
+      } else {
+        // Se quantidade é 1 ou menos, remover o registro
+        await db.delete('pcdesc', where: 'chave = ?', whereArgs: [chave]);
+      }
     }
   }
 

@@ -51,7 +51,7 @@ class _InventarioPageState extends State<InventarioPage> {
     });
   }
 
-  Future<void> deletarItem(String codigo) async {
+  Future<void> deletarItem(String codigo, String chave) async {
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (context) {
@@ -73,7 +73,40 @@ class _InventarioPageState extends State<InventarioPage> {
     );
 
     if (confirmar == true) {
-      await DbService.removerUmItem(codigo);
+      await DbService.removerItemPorChave(chave);
+      await carregarDados();
+    }
+  }
+
+  Future<void> deletarSecao(String secao, List<Map<String, dynamic>> itens) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Confirmar exclusão da seção"),
+          content: Text(
+            "Deseja apagar todos os ${itens.length} itens da Seção $secao?\n\n"
+            "Esta ação não pode ser desfeita.",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text("Cancelar"),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text("Apagar Seção"),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmar == true) {
+      for (var item in itens) {
+        await DbService.removerItemPorChave(item['chave']);
+      }
       await carregarDados();
     }
   }
@@ -165,12 +198,25 @@ class _InventarioPageState extends State<InventarioPage> {
                           width: double.infinity,
                           color: Colors.grey[300],
                           padding: const EdgeInsets.all(10),
-                          child: Text(
-                            "Seção $secao: $totalSecao itens",
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                "Seção $secao: $totalSecao itens",
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.delete_sweep,
+                                  color: Colors.red,
+                                ),
+                                tooltip: 'Apagar seção inteira',
+                                onPressed: () => deletarSecao(secao, itens),
+                              ),
+                            ],
                           ),
                         ),
 
@@ -190,7 +236,7 @@ class _InventarioPageState extends State<InventarioPage> {
                                     Icons.delete,
                                     color: Colors.red,
                                   ),
-                                  onPressed: () => deletarItem(item['codigo']),
+                                  onPressed: () => deletarItem(item['codigo'], item['chave']),
                                 ),
                               ),
 

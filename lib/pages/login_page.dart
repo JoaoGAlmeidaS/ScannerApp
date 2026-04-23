@@ -31,7 +31,7 @@ class _LoginPageState extends State<LoginPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text('Digite seu nome:'),
+            const Text('Digite o número do coletor:'),
             const SizedBox(height: 20),
             TextField(
               controller: _controller,

@@ -39,7 +39,14 @@ class _ConfigPageState extends State<ConfigPage> {
   }
 
   Future<void> _loadArea() async {
-    final area = await DbService.getConfigArea();
+    var area = await DbService.getConfigArea();
+    
+    // Se a área ainda não foi definida, usar "1" como padrão
+    if (area == null || area.isEmpty) {
+      await DbService.salvarConfigArea('1');
+      area = '1';
+    }
+    
     setState(() {
       _areaAtual = area;
     });
@@ -207,7 +214,7 @@ class _ConfigPageState extends State<ConfigPage> {
   }
 
   Future<void> _alterarArea() async {
-    final controller = TextEditingController(text: _areaAtual ?? '');
+    final controller = TextEditingController(text: _areaAtual ?? '1');
 
     final ok = await showDialog<bool>(
       context: context,
@@ -432,7 +439,7 @@ class _ConfigPageState extends State<ConfigPage> {
             ListTile(
               leading: const Icon(Icons.layers),
               title: const Text('Área'),
-              subtitle: Text(_areaAtual != null && _areaAtual!.isNotEmpty
+              subtitle: Text(_areaAtual?.isNotEmpty == true
                   ? _areaAtual!
                   : 'Ainda não definida'),
               trailing: const Icon(Icons.arrow_forward_ios),
@@ -497,6 +504,16 @@ class _ConfigPageState extends State<ConfigPage> {
                     }
                   : null,
               child: const Text('Continuar para Menu'),
+            ),
+            const SizedBox(height: 20),
+            const Center(
+              child: Text(
+                'Scanner App 0.1.0',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: 14,
+                ),
+              ),
             ),
           ],
         ),
