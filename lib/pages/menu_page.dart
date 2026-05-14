@@ -22,7 +22,7 @@ class _MenuPageState extends State<MenuPage> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: const Text('Menu'),
+        title: const Text('Menu - V0.1.2'),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),

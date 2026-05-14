@@ -44,43 +44,94 @@ dependencies:
 
 ### Pré-requisitos
 
-- Flutter SDK 3.11.3 ou superior
-- Dart SDK 3.11.3 ou superior
-- Android SDK (para desenvolvimento Android)
+- **Flutter SDK** 3.11.3 ou superior
+- **Dart SDK** 3.11.3 ou superior
+- **Android SDK** com API Level 21+
+- **Android Studio** ou emulador/dispositivo Android
+- **Git** para clonar o repositório
 
-### Instalação
+### Configuração do Android Studio
 
-1. **Clone o repositório**
+Após instalar o Android Studio, você precisará instalar alguns componentes adicionais:
+
+**1. Abra o Android Studio**
+
+**2. Vá em: `File` → `Settings` → `Languages & Frameworks` → `Android SDK`**
+
+**3. Na aba "SDK Platforms", baixe:**
+- ✅ Android 16.0
+
+**4. Na aba "SDK Tools", certifique-se de ter instalado:**
+- ✅ Android SDK Build-Tools
+- ✅ Android Emulator
+- ✅ Android SDK Platform-Tools
+- ✅ Android SDK Command-line Tools
+- ✅ NDK (Side by side)
+- ✅ CMake
+
+**5. Instale os plugins do Flutter:**
+- Vá em `File` → `Settings` → `Plugins`
+- Busque por "Flutter" e instale o plugin oficial
+- O plugin do Dart será instalado automaticamente
+
+**6. Configure variáveis de ambiente (Windows):**
 ```bash
-git clone https://github.com/seu-usuario/scanner_app.git
+# Adicione ao seu PATH as pastas:
+C:\Users\SeuUsuário\AppData\Local\Android\sdk\platform-tools
+C:\Users\SeuUsuário\AppData\Local\Android\sdk\tools
+```
+
+### Instalação Passo a Passo
+
+**1. Clone o repositório**
+```bash
+git clone https://github.com/JoaoGAlmeidaS/ScannerApp.git
 cd scanner_app
 ```
 
-2. **Instale as dependências**
+**2. Instale as dependências do Flutter**
 ```bash
 flutter pub get
 ```
 
-3. **Execute o app**
+**3. Verifique se tudo está configurado corretamente**
+```bash
+flutter doctor
+```
+Certifique-se de que Android e Flutter estão com ✓.
+
+**4. Conecte um dispositivo Android ou abra um emulador**
+
+Para listar dispositivos disponíveis:
+```bash
+flutter devices
+```
+
+**5. Execute o aplicativo**
 ```bash
 flutter run
 ```
 
-### Build para Produção
+Ou especifique um dispositivo:
+```bash
+flutter run -d <device_id>
+```
 
-**Android:**
+### Build para Produção (APK Release)
+
+Gere um APK otimizado para distribuição:
 ```bash
 flutter build apk --release
 ```
 
-**Windows:**
-```bash
-flutter build windows --release
+O arquivo APK será criado em:
+```
+build/app/outputs/flutter-apk/app-release.apk
 ```
 
-**Linux:**
+Para instalar em um dispositivo:
 ```bash
-flutter build linux --release
+flutter install --release
 ```
 
 ## 📱 Estrutura do Projeto
@@ -104,7 +155,7 @@ lib/
 
 assets/
 └── database/
-    └── DBdados.db3        # Banco de dados SQLite
+    └── DBdados.db3        # Banco de dados (criado em runtime)
 ```
 
 ## 💻 Fluxo de Uso
@@ -119,9 +170,13 @@ assets/
 
 ## 🔐 Permissões Necessárias
 
-### Android
-- Câmera (`android.permission.CAMERA`)
-- Acesso ao armazenamento
+O aplicativo requer as seguintes permissões do Android:
+
+- **CAMERA** - Para leitura de código de barras
+- **READ_EXTERNAL_STORAGE** - Para acessar arquivos do dispositivo
+- **WRITE_EXTERNAL_STORAGE** - Para salvar dados exportados
+
+Essas permissões são automaticamente solicitadas ao usuário na primeira execução.
 
 
 ## 📝 Uso
@@ -160,5 +215,5 @@ O app mantém as seguintes configurações em memória:
 - `permitirCodigosNaoCadastrados` - Permite leitura de códigos não cadastrados
 
 
-**Versão:** 1.0.0  
-**Data de Atualização:** Abril de 2026
+**Versão:** 0.1.2  
+**Data de Atualização:** Maio de 2026
