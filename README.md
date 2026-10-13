@@ -1,219 +1,107 @@
 # 📱 Scanner App
 
-Um aplicativo Flutter para gerenciamento de inventário com leitura de códigos de barras em tempo real.
+Aplicativo Flutter para gerenciamento de inventário com leitura de códigos de barras em tempo real.
 
 ## 📋 Sobre o Projeto
 
-O **Scanner App** é uma solução móvel para facilitar a leitura e gerenciamento de produtos em inventário. Com integração de câmera para captura de código de barras e armazenamento local em banco de dados SQLite, o app oferece uma experiência fluida e eficiente para operações de estoque.
+O **Scanner App** facilita a leitura e o gerenciamento de produtos em inventário. Ele usa a câmera do dispositivo para capturar códigos de barras e armazena os dados localmente em SQLite, oferecendo uma experiência rápida para operações de estoque.
 
 ## ✨ Funcionalidades
 
-- ✅ **Autenticação por Usuário** - Sistema de login e configurações de usuário
-- 📸 **Leitura de Código de Barras** - Captura de códigos via câmera em tempo real
-- 🏪 **Gestão de Lojas e Seções** - Organização de produtos por loja e seção
-- 💾 **Armazenamento Local** - Banco de dados SQLite integrado
-- 📤 **Compartilhamento** - Exportar e compartilhar dados de inventário
-- ⚙️ **Configurações Personalizáveis** - Permite códigos não cadastrados e outras opções
-- 🎯 **Interface Intuitiva** - Design limpo e fácil de usar
+- ✅ **Identificação do usuário** – login simples e configurações por usuário
+- 📸 **Leitura de código de barras** – captura via câmera em tempo real
+- 🏪 **Lojas e seções** – organização dos produtos por loja e seção
+- 💾 **Armazenamento local** – banco de dados SQLite no próprio dispositivo
+- 📤 **Exportação** – compartilhamento dos dados do inventário
+- ⚙️ **Configurações** – opção de aceitar códigos não cadastrados, entre outras
 
 ## 🛠️ Tecnologias
 
-- **Flutter** 3.11.3+
-- **Dart** 3.11.3+
-- **SQLite** (via `sqflite` 2.4.2)
-- **Mobile Scanner** 3.5.5 - Leitura de código de barras
-- **Shared Preferences** 2.3.2 - Armazenamento de preferências
-- **UUID** 4.5.3 - Geração de IDs únicos
-- **Share Plus** 12.0.1 - Compartilhamento de arquivos
+| Pacote | Uso |
+|---|---|
+| [Flutter](https://flutter.dev) (Dart 3.11.3+) | Framework |
+| `mobile_scanner` | Leitura de código de barras |
+| `sqflite` / `path_provider` | Banco de dados local |
+| `shared_preferences` | Preferências do usuário |
+| `uuid` | Geração de IDs únicos |
+| `share_plus` | Compartilhamento de arquivos |
 
-## 📦 Dependências Principais
-
-```yaml
-dependencies:
-  flutter:
-    sdk: flutter
-  mobile_scanner: ^3.5.5
-  sqflite: ^2.4.2
-  path_provider: ^2.1.5
-  uuid: ^4.5.3
-  share_plus: ^12.0.1
-  shared_preferences: ^2.3.2
-```
+As versões exatas estão no [`pubspec.yaml`](pubspec.yaml).
 
 ## 🚀 Como Começar
 
 ### Pré-requisitos
 
-- **Flutter SDK** 3.11.3 ou superior
-- **Dart SDK** 3.11.3 ou superior
-- **Android SDK** com API Level 21+
-- **Android Studio** ou emulador/dispositivo Android
-- **Git** para clonar o repositório
+- Flutter SDK (canal stable) com Dart 3.11.3 ou superior
+- Android SDK (API 21+) e um dispositivo ou emulador Android
+- Git
 
-### Configuração do Android Studio
+Para instalar e configurar o Flutter e o Android Studio, siga a [documentação oficial](https://docs.flutter.dev/get-started/install).
 
-Após instalar o Android Studio, você precisará instalar alguns componentes adicionais:
+### Instalação
 
-**1. Abra o Android Studio**
-
-**2. Vá em: `File` → `Settings` → `Languages & Frameworks` → `Android SDK`**
-
-**3. Na aba "SDK Platforms", baixe:**
-- ✅ Android 16.0
-
-**4. Na aba "SDK Tools", certifique-se de ter instalado:**
-- ✅ Android SDK Build-Tools
-- ✅ Android Emulator
-- ✅ Android SDK Platform-Tools
-- ✅ Android SDK Command-line Tools
-- ✅ NDK (Side by side)
-- ✅ CMake
-
-**5. Instale os plugins do Flutter:**
-- Vá em `File` → `Settings` → `Plugins`
-- Busque por "Flutter" e instale o plugin oficial
-- O plugin do Dart será instalado automaticamente
-
-**6. Configure variáveis de ambiente (Windows):**
-```bash
-# Adicione ao seu PATH as pastas:
-C:\Users\SeuUsuário\AppData\Local\Android\sdk\platform-tools
-C:\Users\SeuUsuário\AppData\Local\Android\sdk\tools
-```
-
-### Instalação Passo a Passo
-
-**1. Clone o repositório**
 ```bash
 git clone https://github.com/JoaoGAlmeidaS/ScannerApp.git
-cd scanner_app
-```
-
-**2. Instale as dependências do Flutter**
-```bash
+cd ScannerApp
 flutter pub get
+flutter doctor        # confira se Flutter e Android estão OK
+flutter devices       # lista os dispositivos disponíveis
+flutter run           # ou: flutter run -d <device_id>
 ```
 
-**3. Verifique se tudo está configurado corretamente**
-```bash
-flutter doctor
-```
-Certifique-se de que Android e Flutter estão com ✓.
+### Build de produção
 
-**4. Conecte um dispositivo Android ou abra um emulador**
-
-Para listar dispositivos disponíveis:
-```bash
-flutter devices
-```
-
-**5. Execute o aplicativo**
-```bash
-flutter run
-```
-
-Ou especifique um dispositivo:
-```bash
-flutter run -d <device_id>
-```
-
-### Build para Produção (APK Release)
-
-Gere um APK otimizado para distribuição:
 ```bash
 flutter build apk --release
 ```
 
-O arquivo APK será criado em:
-```
-build/app/outputs/flutter-apk/app-release.apk
-```
+O APK será gerado em `build/app/outputs/flutter-apk/app-release.apk`.
 
-Para instalar em um dispositivo:
-```bash
-flutter install --release
-```
-
-## 📱 Estrutura do Projeto
+## 📁 Estrutura do Projeto
 
 ```
 lib/
-├── main.dart              # Ponto de entrada do aplicativo
-├── app_state.dart         # Gerenciamento de estado global
-├── database_helper.dart   # Helper para operações com banco de dados
+├── main.dart              # Ponto de entrada
+├── app_state.dart         # Estado global
+├── database_helper.dart   # Acesso ao banco de dados
 ├── db_service.dart        # Serviço de banco de dados
 └── pages/
-    ├── login_page.dart         # Tela de login
-    ├── config_page.dart        # Tela de configurações
-    ├── menu_page.dart          # Menu principal
-    ├── scanner_page.dart       # Tela do scanner
-    ├── leitura_page.dart       # Tela de leitura
-    ├── inventario_page.dart    # Tela de inventário
-    ├── loja_page.dart          # Seleção de loja
-    ├── secao_page.dart         # Seleção de seção
-    └── result_page.dart        # Tela de resultados
-
-assets/
-└── database/
-    └── DBdados.db3        # Banco de dados (criado em runtime)
+    ├── login_page.dart
+    ├── config_page.dart
+    ├── menu_page.dart
+    ├── scanner_page.dart
+    ├── leitura_page.dart
+    ├── inventario_page.dart
+    ├── loja_page.dart
+    ├── secao_page.dart
+    └── result_page.dart
 ```
 
 ## 💻 Fluxo de Uso
 
-1. **Iniciação** - Usuário realiza login com seu nome/ID
-2. **Configuração** - Seleciona a loja e seção de trabalho
-3. **Menu Principal** - Acessa funcionalidades principais
-4. **Scanner** - Abre câmera para ler códigos de barras
-5. **Leitura** - Registra produtos lidos no banco de dados
-6. **Inventário** - Visualiza todos os itens capturados
-7. **Compartilhamento** - Exporta dados quando necessário
+1. **Login** – o usuário se identifica
+2. **Configuração** – seleciona a loja e a seção de trabalho
+3. **Scanner** – lê os códigos de barras pela câmera
+4. **Inventário** – visualiza os itens registrados
+5. **Exportação** – compartilha os dados quando necessário
 
-## 🔐 Permissões Necessárias
+## 🔐 Permissões
 
-O aplicativo requer as seguintes permissões do Android:
+- **Câmera** – necessária para a leitura dos códigos de barras. A permissão é solicitada ao abrir o scanner.
 
-- **CAMERA** - Para leitura de código de barras
-- **READ_EXTERNAL_STORAGE** - Para acessar arquivos do dispositivo
-- **WRITE_EXTERNAL_STORAGE** - Para salvar dados exportados
+## 🐛 Solução de Problemas
 
-Essas permissões são automaticamente solicitadas ao usuário na primeira execução.
-
-
-## 📝 Uso
-
-### Adicionar um Novo Produto
-O scanner captura automaticamente códigos de barras e registra no banco de dados.
-
-### Consultar Inventário
-Navegue para a aba "Inventário" para ver todos os produtos capturados.
-
-### Exportar Dados
-Use a opção "Compartilhar" para exportar os dados em formato compatível.
-
-## 🐛 Resolvendo Problemas
-
-### Câmera não funciona
-- Verifique se as permissões de câmera foram concedidas
+**Câmera não funciona**
+- Verifique se a permissão de câmera foi concedida nas configurações do Android
 - Reinicie o app
-- Verifique se o dispositivo possui câmera
 
-### App travando
-- Limpe o cache: `flutter clean`
-- Reinstale as dependências: `flutter pub get`
-- Reconstrua o projeto: `flutter run`
+**Erros de build ou app travando**
+```bash
+flutter clean
+flutter pub get
+flutter run
+```
 
-### Banco de dados não encontrado
-- Verifique se o arquivo `DBdados.db3` está na pasta `assets/database/`
-- Execute `flutter pub get` para recarregar os assets
+---
 
-## 📊 Configurações AppState
-
-O app mantém as seguintes configurações em memória:
-- `nome` - Nome do usuário logado
-- `loja` - Loja selecionada
-- `secao` - Seção selecionada
-- `permitirCodigosNaoCadastrados` - Permite leitura de códigos não cadastrados
-
-
-**Versão:** 0.1.2  
-**Data de Atualização:** Maio de 2026
+**Versão:** 0.1.2
